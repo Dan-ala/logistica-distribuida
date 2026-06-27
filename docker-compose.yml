@@ -1,0 +1,87 @@
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: logistica-postgres
+    environment:
+      POSTGRES_USER: logistica
+      POSTGRES_PASSWORD: logistica123
+      POSTGRES_DB: tracking_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logistica"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: logistica-rabbitmq
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: logistica
+      RABBITMQ_DEFAULT_PASS: logistica123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  tracking-service:
+    build:
+      context: ./tracking-service
+      dockerfile: Dockerfile
+    container_name: logistica-tracking
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://logistica:logistica123@postgres:5432/tracking_db
+      RABBITMQ_URL: amqp://logistica:logistica123@rabbitmq:5672/
+      SERVICE_NAME: tracking-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: logistica-notification
+    environment:
+      DATABASE_URL: postgresql://logistica:logistica123@postgres:5432/notification_db
+      RABBITMQ_URL: amqp://logistica:logistica123@rabbitmq:5672/
+      SERVICE_NAME: notification-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  route-service:
+    build:
+      context: ./route-service
+      dockerfile: Dockerfile
+    container_name: logistica-route
+    environment:
+      DATABASE_URL: postgresql://logistica:logistica123@postgres:5432/route_db
+      RABBITMQ_URL: amqp://logistica:logistica123@rabbitmq:5672/
+      SERVICE_NAME: route-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
