@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.config import config
 from app.models import Notification
+from shared.metrics import events_consumed_total, db_operations_total
 
 logger = logging.getLogger(config.SERVICE_NAME)
 
@@ -21,7 +22,7 @@ def generate_notification(vehicle_id: str, latitude: float, longitude: float) ->
     return f"Vehículo {vehicle_id} transitando en coordenadas ({latitude:.4f}, {longitude:.4f})"
 
 
-def process_location_event(event_data: dict, db: Session) -> None:
+def process_location_event(event_data: dict, event_id: str, db: Session) -> None:
     vehicle_id = event_data["vehicle_id"]
     latitude = event_data["latitude"]
     longitude = event_data["longitude"]
@@ -31,7 +32,16 @@ def process_location_event(event_data: dict, db: Session) -> None:
     notification = Notification(
         vehicle_id=vehicle_id,
         message=message,
+        event_id=event_id,
+        status="COMPLETED",
     )
     db.add(notification)
     db.commit()
+
+    events_consumed_total.labels(
+        service=config.SERVICE_NAME, queue="notification.service.queue", status="success"
+    ).inc()
+    db_operations_total.labels(
+        service=config.SERVICE_NAME, operation="insert_notification", status="success"
+    ).inc()
     logger.info("Notification saved: %s", message)

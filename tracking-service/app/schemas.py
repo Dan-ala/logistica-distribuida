@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,3 +14,10 @@ class LocationUpdateRequest(BaseModel):
 class LocationUpdateResponse(BaseModel):
     event_id: str
     message: str
+    status: str = "PENDING"
+
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+    outbox_pending: Optional[int] = None

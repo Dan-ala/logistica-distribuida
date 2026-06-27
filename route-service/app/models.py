@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, String, Float, DateTime
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,4 +14,6 @@ class Route(Base):
     vehicle_id = Column(String(50), nullable=False, index=True)
     distance = Column(Float, nullable=False)
     cost = Column(Float, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    event_id = Column(String(100), nullable=True, index=True)
+    status = Column(String(20), nullable=False, default="COMPLETED")
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

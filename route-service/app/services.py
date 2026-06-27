@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.config import config
 from app.models import Route
+from shared.metrics import events_consumed_total, db_operations_total
 
 logger = logging.getLogger(config.SERVICE_NAME)
 
@@ -24,7 +25,7 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return round(R * c, 2)
 
 
-def process_location_event(event_data: dict, db: Session) -> None:
+def process_location_event(event_data: dict, event_id: str, db: Session) -> None:
     vehicle_id = event_data["vehicle_id"]
     latitude = event_data["latitude"]
     longitude = event_data["longitude"]
@@ -36,7 +37,16 @@ def process_location_event(event_data: dict, db: Session) -> None:
         vehicle_id=vehicle_id,
         distance=distance,
         cost=cost,
+        event_id=event_id,
+        status="COMPLETED",
     )
     db.add(route)
     db.commit()
+
+    events_consumed_total.labels(
+        service=config.SERVICE_NAME, queue="route.service.queue", status="success"
+    ).inc()
+    db_operations_total.labels(
+        service=config.SERVICE_NAME, operation="insert_route", status="success"
+    ).inc()
     logger.info("Route saved: vehicle=%s, distance=%.2f km, cost=%.2f", vehicle_id, distance, cost)

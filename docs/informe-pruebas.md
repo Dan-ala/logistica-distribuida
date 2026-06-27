@@ -15,30 +15,23 @@ Revisa `docs/pruebas.md` y escribe qué tipos de prueba hay:
 | Flujo básico | |
 | Idempotencia | |
 | Validación | |
-| Fallos / Recuperación | |
+| Outbox / Recuperación | |
+| Fallos DLQ / Compensación | |
 | Carga (k6) | |
 
 ## Prueba de flujo básico
 
-Ejecuta o revisa el paso 2 de `docs/pruebas.md` y completa:
-
-- 1er curl: envía CAR-001 en Bogotá → ¿qué responde? _______
-- 2do curl: envía TRUCK-001 en Medellín → ¿qué responde? _______
-
-### ¿En qué tablas aparecen los datos después?
-
-| Base de datos | ¿Qué registros aparecen? |
-|---------------|--------------------------|
-| tracking_db | |
-| notification_db | |
-| route_db | |
+- ¿Qué respuesta da el POST al enviar CAR-001 en Bogotá?
+- ¿Qué valor tiene `status` en la respuesta?
+- ¿En qué tablas aparecen los datos después? (tracking_db, notification_db, route_db)
 
 ## Prueba de idempotencia
 
-- Envía el mismo payload 2 veces:
+- Envía el mismo payload con el mismo `Idempotency-Key` 2 veces:
   - 1ra vez: HTTP _____
   - 2da vez: HTTP _____
-- ¿Por qué es importante esto?
+- ¿Por qué es importante la idempotencia en un sistema distribuido?
+- ¿Qué diferencia hay entre la idempotencia por `Idempotency-Key` y la del par `vehicle_id + timestamp`?
 
 ## Prueba de validación
 
@@ -47,24 +40,44 @@ Ejecuta o revisa el paso 2 de `docs/pruebas.md` y completa:
 | Caso | HTTP |
 |------|:----:|
 | Latitud = 100 (>90) | |
-| Faltan campos (latitude, longitude, timestamp) | |
-| Timestamp inválido ("invalido") | |
+| Faltan campos | |
+| Timestamp inválido | |
 
 ## Prueba de fallos
 
-Revisa el paso 6 de `docs/pruebas.md`:
+- **Outbox**: ¿qué pasa si detienes RabbitMQ y envías ubicaciones? ¿Se pierden?
+- **Retry TTL**: ¿cuántos reintentos hace un consumidor antes de enviar a DLQ?
+- ¿Cuánto tiempo espera entre reintentos?
+- ¿Qué evento de compensación se publica cuando se agotan los reintentos?
+- ¿Qué servicio consume ese evento?
+- ¿Qué cambia en el tracking service cuando recibe una compensación?
 
-- ¿Qué pasa si detienes `route-service` y envías ubicaciones?
-- ¿Los datos se pierden? _______
-- ¿Qué pasa cuando reinicias el servicio?
+## Observabilidad
+
+### Logs
+
+- ¿En qué formato están los logs?
+- Busca un ejemplo en los archivos del proyecto.
+
+### Métricas Prometheus
+
+- ¿Qué URL expone las métricas?
+- Nombra 3 métricas disponibles
+- ¿Qué información da el histograma `http_request_duration_seconds`?
+
+### Grafana
+
+- ¿En qué URL está Grafana?
+- ¿Qué datasource está configurado?
 
 ## Prueba de carga (k6)
 
-Revisa `k6/load_test.js` y responde:
+Revisa `k6/load_test.js`:
 
-- ¿Cuántos usuarios virtuales simula? _______
-- ¿Qué métricas mide? _______
-- ¿Cuál es el máximo de fallos permitido? _______
+- ¿Cuántos VUs máximos simula?
+- ¿Qué endpoints prueba?
+- ¿Qué thresholds tiene configurados?
+- ¿Qué prueba adicional de idempotencia incluye?
 
 ## Trade-offs (compensaciones)
 
@@ -74,12 +87,14 @@ Completa con lo que aprendiste:
 |----------|---------|------------|
 | Saga en vez de 2PC | | |
 | Cada servicio con su BD | | |
-| Usar RabbitMQ | | |
+| Outbox Pattern | | |
+| RabbitMQ con retry TTL | | |
+| Circuit Breaker | | |
 | Consistencia eventual | | |
 
 ## Conclusión
 
-Escribe 3 cosas que aprendiste sobre pruebas en sistemas distribuidos:
+Escribe 3 cosas que aprendiste sobre pruebas y observabilidad en sistemas distribuidos:
 
 1.
 2.
